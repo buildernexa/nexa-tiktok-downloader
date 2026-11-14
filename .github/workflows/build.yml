@@ -1,0 +1,153 @@
+name: Build NexaTools Downloader
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            args: ""
+            ytdlp: yt-dlp_linux
+            ffmpeg: ffmpeg-release-amd64-static
+            triple: x86_64-unknown-linux-gnu
+          - platform: windows-latest
+            args: ""
+            ytdlp: yt-dlp.exe
+            ffmpeg: ffmpeg-release-essentials.zip
+            triple: x86_64-pc-windows-msvc
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+            ytdlp: yt-dlp_macos
+            ffmpeg: ffmpeg
+            triple: aarch64-apple-darwin
+          - platform: macos-13
+            args: "--target x86_64-apple-darwin"
+            ytdlp: yt-dlp_macos
+            ffmpeg: ffmpeg
+            triple: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf libssl-dev pkg-config
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || matrix.platform == 'macos-13' && 'x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install npm deps
+        run: npm ci || npm install
+
+      - name: Download yt-dlp (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p src-tauri/binaries
+          curl -L -o src-tauri/binaries/yt-dlp-${{ matrix.triple }} \
+            https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux
+          chmod +x src-tauri/binaries/yt-dlp-${{ matrix.triple }}
+
+      - name: Download yt-dlp (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "src-tauri/binaries/yt-dlp-${{ matrix.triple }}.exe"
+
+      - name: Download yt-dlp (macOS)
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          mkdir -p src-tauri/binaries
+          curl -L -o src-tauri/binaries/yt-dlp-${{ matrix.triple }} \
+            https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+          chmod +x src-tauri/binaries/yt-dlp-${{ matrix.triple }}
+
+      - name: Download ffmpeg (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p src-tauri/binaries
+          curl -L -o /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+          tar -xJf /tmp/ffmpeg.tar.xz -C /tmp
+          cp /tmp/ffmpeg-*-static/ffmpeg src-tauri/binaries/ffmpeg-${{ matrix.triple }}
+          chmod +x src-tauri/binaries/ffmpeg-${{ matrix.triple }}
+
+      - name: Download ffmpeg (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "$env:TEMP\ffmpeg.zip"
+          Expand-Archive "$env:TEMP\ffmpeg.zip" -DestinationPath "$env:TEMP\ffmpeg" -Force
+          $exe = Get-ChildItem -Path "$env:TEMP\ffmpeg" -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+          Copy-Item $exe.FullName "src-tauri/binaries/ffmpeg-${{ matrix.triple }}.exe"
+
+      - name: Download ffmpeg (macOS)
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          mkdir -p src-tauri/binaries
+          brew install ffmpeg
+          cp "$(which ffmpeg)" src-tauri/binaries/ffmpeg-${{ matrix.triple }}
+          chmod +x src-tauri/binaries/ffmpeg-${{ matrix.triple }}
+
+      - name: Generate icons
+        run: |
+          if [ ! -d "src-tauri/icons" ]; then
+            npx @tauri-apps/cli icon --help > /dev/null 2>&1 || true
+          fi
+        shell: bash
+        continue-on-error: true
+
+      - name: Add placeholder icons
+        shell: bash
+        run: |
+          mkdir -p src-tauri/icons
+          if [ ! -f src-tauri/icons/32x32.png ]; then
+            echo "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAQ5JREFUWEftlUEKwjAQRb9Ld9K9K+gBRLyA4E08gLhwoQfQhXgAj6BX8ADiwoUeQFy4UHwH2yGQpE1bWxciZDGQzM/8mckkQN7G2EcpZRxjLCKiGmvtKaU2x3EcKaUejLGntXYHqmVdVXWllHoYY4c6qrVdiNhijB2klDoYY4+UUgvG2Etr7QBV1S7G2ENKqQ1j7K21doeq6hBjbC+l1I4x9tJaO0BVdYwxdpBSascYe2utHaCqOqWUOjDGXlprB6iqTjHG9lJK7Rhjb621A1RVp5RSB8bYS2vtAFXVKcbYXkqpHexX9QdQVZ1ijO2llNoxxt5aaweoqk4xxvZSSu0YY2+ttQNUVacYY3sppXaMsbfW2gGqqlOMsb2UUjvG2Ftr7QBV1SnG2F5KqR1j7K21doCq6hRjbC+l1I4x9tZaO0BVdYwxtpdSascYe2utHaCqOsYY20sptWOMvbXWDlBVHWOM7aWU2jHG3lprB6iqjjHG9lJK7Rhjb621A1RVxxhjeymldoyxt9baAaqqY4yxvZRSO8bYW2vtAFXVMcbYXkqpHWPsrbV2gKrqGGNsL6XUjjH21lo7QFV1jDG2l1Jqxxh7a60doKo6xhjbSym1Y4y9tdYOUFUdY4ztpZTaMcbeWmsHqKqOMcb2UkrtGGNvrbUDVFXHGJN/lFIrAKWtV4YAAAAASUVORK5CYII=" | base64 -d > src-tauri/icons/32x32.png
+            cp src-tauri/icons/32x32.png src-tauri/icons/128x128.png
+            cp src-tauri/icons/32x32.png src-tauri/icons/128x128@2x.png
+            cp src-tauri/icons/32x32.png src-tauri/icons/icon.png
+            # For non-PNG, use convert or similar; on CI we skip .ico/.icns; Tauri falls back to png
+          fi
+
+      - name: Build with tauri-action
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: "NexaTools Downloader ${{ github.ref_name }}"
+          releaseBody: "Automated build. See assets below."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nexa-${{ matrix.triple }}
+          path: |
+            src-tauri/target/**/release/bundle/**
+          if-no-files-found: warn
