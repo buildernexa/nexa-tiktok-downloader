@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f5c518" />
+  <title>Nexa-TikTok</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">▣</div>
+      <div class="brand-name">Nexa-TikTok</div>
+    </div>
+    <div class="status-pill"><span class="dot"></span><span id="status-label">Ready</span></div>
+  </header>
+
+  <main class="page">
+
+    <section class="card input-card">
+      <form id="dl-form">
+        <div class="input-wrap">
+          <input type="url" id="url" placeholder="TikTok URL" required />
+          <button type="button" id="paste-btn" class="icon-btn" title="Paste">⎘</button>
+        </div>
+        <div class="toolbar">
+          <button type="button" class="chip active" data-mode="video" data-quality="hd">HD</button>
+          <button type="button" class="chip" data-mode="video" data-quality="sd">SD</button>
+          <button type="button" class="chip" data-mode="audio">MP3</button>
+          <button type="button" class="chip" data-mode="thumb">Cover</button>
+        </div>
+        <button type="submit" id="dl-btn" class="btn-primary">
+          <span class="btn-label">GET</span>
+        </button>
+      </form>
+    </section>
+
+    <section class="grid">
+      <button class="tile" data-jump="url"><span class="tile-icon">⬇</span><span class="tile-label">Single</span></button>
+      <button class="tile" data-jump="url"><span class="tile-icon">⧉</span><span class="tile-label">Batch</span></button>
+      <button class="tile" data-mode="audio"><span class="tile-icon">♫</span><span class="tile-label">Audio</span></button>
+      <button class="tile" data-mode="thumb"><span class="tile-icon">▣</span><span class="tile-label">Cover</span></button>
+      <button class="tile" id="history-toggle"><span class="tile-icon">◷</span><span class="tile-label">History</span></button>
+      <button class="tile" id="theme-toggle"><span class="tile-icon">◐</span><span class="tile-label">Theme</span></button>
+    </section>
+
+    <section class="card result-card hidden" id="result">
+      <div class="result-head">
+        <span class="pill" id="mode-pill">—</span>
+        <button class="icon-btn" id="close-result">✕</button>
+      </div>
+      <div class="result-body">
+        <div class="cover-wrap">
+          <img id="cover" alt="" class="cover hidden" />
+          <div id="cover-ph" class="cover-ph">▣</div>
+        </div>
+        <div class="meta">
+          <p class="meta-title" id="title">—</p>
+          <p class="meta-author" id="author">@—</p>
+          <div class="meta-stats">
+            <span id="duration">—</span>
+            <span id="source">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button id="save-btn" class="btn-primary">
+          <span class="btn-label">Save</span>
+        </button>
+        <a id="open-link" class="btn-ghost" href="#" target="_blank" rel="noopener">Open</a>
+        <button id="copy-link" class="btn-ghost">Copy</button>
+      </div>
+    </section>
+
+    <section class="card history-card hidden" id="history">
+      <div class="history-head">
+        <h2>History</h2>
+        <button class="text-btn" id="clear-history">Clear</button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+
+  </main>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <footer class="foot">
+    <span>NexaBuild</span><span class="dot-sep">·</span><span>v2.0</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
