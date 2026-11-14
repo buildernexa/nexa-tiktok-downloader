@@ -1,0 +1,17 @@
+{
+  "name": "nexa-tiktok-downloader",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo static"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/share": "^6.0.2"
+  }
+}
